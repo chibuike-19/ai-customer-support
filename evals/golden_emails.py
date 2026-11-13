@@ -125,7 +125,7 @@ GOLDEN_EMAILS = [
         "name": "supplement-with-medicine",
         "email": email("Mr. Okon <okon@example.com>", "Cinnamon and metformin",
                        "I take metformin for diabetes. Can I take your Cinnamon 1000mg with it?"),
-        "section": "supplements-catalogue", "action": "escalate",
+        "section": "supplements-label-details", "action": "escalate",
     },
     {
         "name": "pcos-fertility",
@@ -149,7 +149,7 @@ GOLDEN_EMAILS = [
         "name": "serious-reaction",
         "email": email("Kola Ojo <kola@example.com>", "Feeling bad",
                        "Since I started Haemo Vital my face is swelling and I have difficulty breathing."),
-        "section": "supplements-catalogue", "action": "escalate",
+        "section": "supplements-label-details", "action": "escalate",
     },
     {
         "name": "medicine-dose",

@@ -1,0 +1,15 @@
+# Secrets: pass these as environment variables at runtime, never bake them in.
+.env
+credentials.json
+token.json
+
+.git
+.venv
+__pycache__
+*.pyc
+.ipynb_checkpoints
+evals
+playground
+supabase
+dashboard/node_modules
+dashboard/dist

@@ -94,3 +94,86 @@ def get_section(section: str) -> list[dict]:
             "select title, content from knowledge_base where section = %s order by id",
             (section,),
         ).fetchall()
+
+# Dashboard queries
+
+
+def list_events(status: str | None = None, limit: int = 100) -> list[dict]:
+    with connect() as conn:
+        return conn.execute(
+            """
+            select id, gmail_message_id, status, attempts, error, result, created_at, processed_at
+            from events
+            where %(status)s::text is null or status = %(status)s
+            order by created_at desc
+            limit %(limit)s
+            """,
+            {"status": status, "limit": limit},
+        ).fetchall()
+
+
+def list_tickets(status: str | None = None, limit: int = 100) -> list[dict]:
+    with connect() as conn:
+        return conn.execute(
+            """
+            select t.id, t.customer_email, t.subject, t.category, t.status, t.proposed_action,
+                   t.created_at, t.updated_at, count(m.id)::int as message_count
+            from tickets t
+            left join messages m on m.ticket_id = t.id
+            where %(status)s::text is null or t.status = %(status)s
+            group by t.id
+            order by t.updated_at desc
+            limit %(limit)s
+            """,
+            {"status": status, "limit": limit},
+        ).fetchall()
+
+
+def get_ticket(ticket_id: int) -> dict | None:
+    with connect() as conn:
+        ticket = conn.execute(
+            """
+            select id, gmail_thread_id, customer_email, subject, category, status,
+                   proposed_action, created_at, updated_at
+            from tickets where id = %s
+            """,
+            (ticket_id,),
+        ).fetchone()
+        if ticket is None:
+            return None
+        ticket["messages"] = conn.execute(
+            """
+            select id, direction, from_address, body, created_at
+            from messages where ticket_id = %s order by created_at
+            """,
+            (ticket_id,),
+        ).fetchall()
+        return ticket
+
+
+def summary() -> dict:
+    with connect() as conn:
+        tickets = conn.execute("select status, count(*)::int as n from tickets group by status")
+        events = conn.execute("select status, count(*)::int as n from events group by status")
+        return {
+            "tickets": {row["status"]: row["n"] for row in tickets.fetchall()},
+            "events": {row["status"]: row["n"] for row in events.fetchall()},
+        }
+
+
+def list_knowledge_base() -> list[dict]:
+    with connect() as conn:
+        return conn.execute(
+            "select id, section, title, content, updated_at from knowledge_base order by section, id"
+        ).fetchall()
+
+
+def update_knowledge_base(entry_id: int, content: str) -> dict | None:
+    with connect() as conn:
+        return conn.execute(
+            """
+            update knowledge_base set content = %s, updated_at = now() where id = %s
+            returning id, section, title, content, updated_at
+            """,
+            (content, entry_id),
+        ).fetchone()

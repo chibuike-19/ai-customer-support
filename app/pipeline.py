@@ -18,13 +18,13 @@ logger = logging.getLogger(__name__)
 MAX_ATTEMPTS = 3
 
 
-def handle_message(gmail: Gmail, message_id: str) -> None:
+async def handle_message(gmail: Gmail, message_id: str) -> None:
     event = db.start_event(message_id)
     if event is None:
         gmail.add_label(message_id, PROCESSED_LABEL)
         return
     try:
-        status, result = process(gmail, message_id)
+        status, result = await process(gmail, message_id)
         gmail.add_label(message_id, PROCESSED_LABEL)
         db.finish_event(event["id"], status, result)
         logger.info("%s %s %s", message_id, status, result)
@@ -35,7 +35,7 @@ def handle_message(gmail: Gmail, message_id: str) -> None:
         raise
 
 
-def process(gmail: Gmail, message_id: str) -> tuple[str, dict]:
+async def process(gmail: Gmail, message_id: str) -> tuple[str, dict]:
     message = gmail.get_message(message_id)
     headers = get_headers(message)
 
@@ -52,7 +52,7 @@ def process(gmail: Gmail, message_id: str) -> tuple[str, dict]:
         # A colleague owns this thread until they remove the needs-human label.
         return "skipped", {"reason": "thread is escalated"}
 
-    decision = decide(format_thread(thread, gmail.address), has_attachments(message))
+    decision = await decide(format_thread(thread, gmail.address), has_attachments(message))
 
     sent = gmail.send_reply(message, decision.reply)
     db.save_message(ticket_id, sent["id"], "out", gmail.address, decision.reply)

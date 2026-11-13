@@ -1,0 +1,8 @@
+.env
+credentials.json
+.venv
+evals
+playground
+supabase
+dashboard/node_modules
+dashboard/dist

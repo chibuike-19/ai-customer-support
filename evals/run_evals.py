@@ -20,8 +20,10 @@ class ActionMatches(Evaluator):
         return ctx.output.action == ctx.expected_output["action"]
 
 
-def run_pipeline(email: str) -> Decision:
-    return decide(email)
+async def run_pipeline(email: str) -> Decision:
+    # Async, so every case shares one event loop. A sync task runs each case in its own
+    # thread and event loop, which breaks the shared model client.
+    return await decide(email)
 
 
 dataset = Dataset(
