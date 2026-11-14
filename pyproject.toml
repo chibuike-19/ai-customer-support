@@ -20,4 +20,5 @@ dev = [
     "ipykernel>=7.4.0",
     "nest-asyncio>=1.6.0",
     "pydantic-evals>=2.68.0",
+    "railway-sdk==0.7.0",
 ]

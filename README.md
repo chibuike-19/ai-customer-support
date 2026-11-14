@@ -30,14 +30,14 @@ Run exactly one container with `POLLER_ENABLED=true`, otherwise several pollers 
 
 ## Deploying to Railway
 
-`railway.json` pins one replica in the EU region, never sleeps, and health-checks `/health`.
+Every push to `main` deploys the code. The service settings live in `.railway/railway.py`
+(one replica in EU West, never sleeps, health check on `/health`, no overlap between deploys).
+Railway does not read that file on deploy, so after changing it run:
 
 ```sh
-railway login
-railway init --name ai-customer-support   # once
-railway up                                # build and deploy this folder
-railway domain                            # once: get a https://*.up.railway.app address
+uv run railway config plan     # preview
+uv run railway config apply    # apply
 ```
 
-Set the variables from `.env` in the Railway service (Variables tab or `railway variables --set`).
-Stop any local poller once the Railway one is running.
+Variables (secrets) are managed in the Railway dashboard, not in the file. Set `POLLER_ENABLED=true`
+there; it defaults to false so a local `fastapi dev` does not poll the inbox.
