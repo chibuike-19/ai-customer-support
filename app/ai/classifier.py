@@ -137,13 +137,41 @@ def in_reference(quote: str, reference: str) -> bool:
     return bool(quoted) and any(quoted <= words(line) for line in reference.splitlines())
 
 
+PRODUCT_KINDS = {"supplements-catalogue": "supplement", "other-products": "other-product"}
+
+
+def product_kind_of(quote: str, reference: str) -> str | None:
+    """The product kind of the first heading or item in the reference that the quote names."""
+    quoted = words(quote)
+    if not quoted:
+        return None
+    kind = None
+    for line in reference.splitlines():
+        heading = re.match(r"### .*\((?:section: )?([a-z-]+)\)$", line)
+        if heading:
+            kind = PRODUCT_KINDS.get(heading.group(1))
+        if kind and quoted <= words(line):
+            return kind
+    return None
+
+
 async def classify(thread: str) -> Classification:
     result = await classifier.run(thread)
     classification = result.output
+    reference = await asyncio.to_thread(product_reference)
     if classification.product_kind in ("supplement", "other-product"):
         # Check the quote: a product we cannot find in the reference is not one we sell.
-        reference = await asyncio.to_thread(product_reference)
         found = [q for q in classification.product_evidence if in_reference(q, reference)]
         if not found:
             classification.product_kind = "not-in-reference"
+    elif classification.product_kind == "not-in-reference":
+        # Check the other way too: the model misses headings worded differently, such as
+        # "fitness and sports supplements" for "Sports and fitness". If what the customer
+        # named is in the reference, we sell it.
+        for mentioned in classification.products_mentioned:
+            kind = product_kind_of(mentioned, reference)
+            if kind:
+                classification.product_kind = kind
+                classification.product_evidence.append(mentioned)
+                break
     return classification

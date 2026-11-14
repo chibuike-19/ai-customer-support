@@ -21,7 +21,10 @@ MAX_ATTEMPTS = 3
 async def handle_message(gmail: Gmail, message_id: str) -> None:
     event = db.start_event(message_id)
     if event is None:
-        gmail.add_label(message_id, PROCESSED_LABEL)
+        # Only label finished messages. One still 'processing' may have been cut off; leaving
+        # it unlabelled keeps it in the poll, so it is retried once the attempt goes stale.
+        if db.event_status(message_id) in ("processed", "skipped"):
+            gmail.add_label(message_id, PROCESSED_LABEL)
         return
     try:
         status, result = await process(gmail, message_id)

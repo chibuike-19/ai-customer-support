@@ -9,6 +9,10 @@ def connect() -> psycopg.Connection:
     return psycopg.connect(settings.database_url, autocommit=True, row_factory=dict_row)
 
 
+# An attempt still 'processing' after this long was cut off (restart, crash) and is retried.
+STALE_AFTER = "10 minutes"
+
+
 def start_event(gmail_message_id: str) -> dict | None:
     """Claim a message. Returns None when it is already handled or in progress."""
     with connect() as conn:
@@ -16,12 +20,22 @@ def start_event(gmail_message_id: str) -> dict | None:
             """
             insert into events (gmail_message_id) values (%s)
             on conflict (gmail_message_id) do update
-              set attempts = events.attempts + 1, status = 'processing', error = null
+              set attempts = events.attempts + 1, status = 'processing', error = null,
+                  claimed_at = now()
               where events.status = 'failed'
+                 or (events.status = 'processing' and events.claimed_at < now() - %s::interval)
             returning id, attempts
             """,
-            (gmail_message_id,),
+            (gmail_message_id, STALE_AFTER),
         ).fetchone()
+
+
+def event_status(gmail_message_id: str) -> str | None:
+    with connect() as conn:
+        row = conn.execute(
+            "select status from events where gmail_message_id = %s", (gmail_message_id,)
+        ).fetchone()
+        return row["status"] if row else None
 
 
 def finish_event(event_id: int, status: str, result: dict) -> None:
